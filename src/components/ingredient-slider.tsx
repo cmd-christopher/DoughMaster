@@ -1,0 +1,93 @@
+"use client";
+
+import type { FC } from 'react';
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+interface IngredientSliderProps {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  unit?: string;
+  calculatedWeight: number;
+}
+
+const IngredientSlider: FC<IngredientSliderProps> = ({
+  label,
+  value,
+  onChange,
+  min = 0,
+  max = 100,
+  step = 0.1,
+  unit = "%",
+  calculatedWeight,
+}) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numValue = parseFloat(e.target.value);
+    if (!isNaN(numValue)) {
+      if (numValue >= min && numValue <= max) {
+        onChange(numValue);
+      } else if (numValue < min) {
+        onChange(min);
+      } else {
+        onChange(max);
+      }
+    }
+  };
+  
+  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const numValue = parseFloat(e.target.value);
+     if (isNaN(numValue) || numValue < min) {
+        onChange(min);
+      } else if (numValue > max) {
+        onChange(max);
+      }
+  };
+
+
+  return (
+    <Card className="bg-card shadow-md transition-all duration-300 hover:shadow-lg">
+      <CardHeader className="pb-2 pt-4">
+        <CardTitle className="text-md font-semibold">{label}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 pb-4">
+        <div className="flex items-center justify-between space-x-2">
+          <Label htmlFor={`${label}-slider`} className="text-xs flex-shrink-0">
+            {value.toFixed(label === 'Yeast' ? 2 : 1)}{unit}
+          </Label>
+          <Input
+            type="number"
+            id={`${label}-input`}
+            value={value.toFixed(label === 'Yeast' ? 2 : 1)}
+            onChange={handleInputChange}
+            onBlur={handleInputBlur}
+            min={min}
+            max={max}
+            step={step}
+            className="w-20 h-8 text-xs text-right"
+            aria-label={`${label} percentage input`}
+          />
+        </div>
+        <Slider
+          id={`${label}-slider`}
+          value={[value]}
+          onValueChange={(newValue) => onChange(newValue[0])}
+          min={min}
+          max={max}
+          step={step}
+          aria-label={`${label} percentage slider`}
+        />
+        <p className="text-xs text-muted-foreground">
+          Weight: <span className="font-medium text-foreground">{calculatedWeight.toFixed(1)}g</span>
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default IngredientSlider;
