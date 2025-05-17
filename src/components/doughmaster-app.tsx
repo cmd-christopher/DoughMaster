@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Recipe, Amendment } from '@/lib/types';
+import type { Recipe, Amendment, FlourSpec } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,46 +13,64 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PlusCircleIcon, SaveIcon, DownloadIcon, Trash2Icon, RotateCcwIcon, ChefHatIcon, InfoIcon, ListChecksIcon } from "lucide-react";
+import { PlusCircleIcon, SaveIcon, DownloadIcon, Trash2Icon, RotateCcwIcon, ChefHatIcon, InfoIcon, ListChecksIcon, Settings2Icon, WheatIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
 
 import IngredientSlider from './ingredient-slider';
 import AmendmentItem from './amendment-item';
+import FlourSpecItem from './flour-spec-item'; // New component
 
 // Constants for egg calculations
 const EGG_WEIGHT_G = 50; // Average large egg weight in grams
 const EGG_WATER_CONTENT_PERCENTAGE = 75; // Approximate water content of an egg
 const FLOUR_PER_EGG_G = 300; // Default: 1 egg per 300g of flour
 
+const PREDEFINED_FLOURS: Omit<FlourSpec, 'shareValue'>[] = [
+  { id: 'breadFlour', name: 'Bread Flour', isCustom: false, isPredefined: true },
+  { id: 'wholeWheatFlour', name: 'Whole Wheat Flour', isCustom: false, isPredefined: true },
+  { id: 'ryeFlour', name: 'Rye Flour', isCustom: false, isPredefined: true },
+  { id: 'semolinaFlour', name: 'Semolina Flour', isCustom: false, isPredefined: true },
+];
+
+const initialFlourComposition = (): FlourSpec[] => [
+  { ...PREDEFINED_FLOURS[0], shareValue: 100 }, // Bread flour 100% share initially
+  { ...PREDEFINED_FLOURS[1], shareValue: 0 },
+  { ...PREDEFINED_FLOURS[2], shareValue: 0 },
+  { ...PREDEFINED_FLOURS[3], shareValue: 0 },
+];
+
 const initialRecipeState: Recipe = {
   name: 'New Recipe',
   flourWeight: 500,
-  waterPercentage: 65, // This is for ADDED water
+  waterPercentage: 65,
   saltPercentage: 2,
   yeastPercentage: 1,
-  amendments: [], // Custom amendments
-  // Predefined additions defaults
+  useDetailedFlourComposition: false,
+  flourComposition: initialFlourComposition(),
+  amendments: [],
   useSugar: false,
-  sugarPercentage: 5, // Default 5% if used
+  sugarPercentage: 5,
   useEgg: false,
-  eggCount: 1,        // Default 1 egg if used
+  eggCount: 1,
   useButter: false,
-  butterPercentage: 10, // Default 10% if used
+  butterPercentage: 10,
   useOil: false,
-  oilPercentage: 3,   // Default 3% if used
+  oilPercentage: 3,
 };
 
 export default function DoughMasterApp() {
   const { toast } = useToast();
   const [recipeName, setRecipeName] = useState<string>(initialRecipeState.name);
-  const [flourWeight, setFlourWeight] = useState<number>(initialRecipeState.flourWeight);
-  const [waterPercentage, setWaterPercentage] = useState<number>(initialRecipeState.waterPercentage); // Added water %
+  const [flourWeight, setFlourWeight] = useState<number>(initialRecipeState.flourWeight); // This is TOTAL flour weight
+  const [waterPercentage, setWaterPercentage] = useState<number>(initialRecipeState.waterPercentage);
   const [saltPercentage, setSaltPercentage] = useState<number>(initialRecipeState.saltPercentage);
   const [yeastPercentage, setYeastPercentage] = useState<number>(initialRecipeState.yeastPercentage);
+  
+  const [useDetailedFlourComposition, setUseDetailedFlourComposition] = useState<boolean>(initialRecipeState.useDetailedFlourComposition!);
+  const [flourSpecs, setFlourSpecs] = useState<FlourSpec[]>(initialRecipeState.flourComposition!);
+
   const [amendments, setAmendments] = useState<Amendment[]>(initialRecipeState.amendments);
 
-  // State for predefined amendments
   const [useSugar, setUseSugar] = useState<boolean>(initialRecipeState.useSugar!);
   const [sugarPercentageState, setSugarPercentageState] = useState<number>(initialRecipeState.sugarPercentage!);
   const [useEgg, setUseEgg] = useState<boolean>(initialRecipeState.useEgg!);
@@ -70,12 +88,10 @@ export default function DoughMasterApp() {
     return (flourWeight * percentage) / 100;
   }, [flourWeight]);
 
-  // Core ingredient weights
-  const waterWeight = useMemo(() => calculateWeight(waterPercentage), [calculateWeight, waterPercentage]); // Added water weight
+  const waterWeight = useMemo(() => calculateWeight(waterPercentage), [calculateWeight, waterPercentage]);
   const saltWeight = useMemo(() => calculateWeight(saltPercentage), [calculateWeight, saltPercentage]);
   const yeastWeight = useMemo(() => calculateWeight(yeastPercentage), [calculateWeight, yeastPercentage]);
 
-  // Predefined amendment weights
   const sugarWeight = useMemo(() => useSugar ? (flourWeight * sugarPercentageState) / 100 : 0, [useSugar, flourWeight, sugarPercentageState]);
   const butterWeight = useMemo(() => useButter ? (flourWeight * butterPercentageState) / 100 : 0, [useButter, flourWeight, butterPercentageState]);
   const oilWeight = useMemo(() => useOil ? (flourWeight * oilPercentageState) / 100 : 0, [useOil, flourWeight, oilPercentageState]);
@@ -89,7 +105,7 @@ export default function DoughMasterApp() {
         const defaultEggs = Math.max(1, Math.round(flourWeight / FLOUR_PER_EGG_G));
         setEggCountState(defaultEggs);
       } else if (eggCountState === 0 && flourWeight === 0) {
-        setEggCountState(1); // Default to 1 if no flour yet, user can adjust
+        setEggCountState(1);
       }
     }
   };
@@ -104,6 +120,97 @@ export default function DoughMasterApp() {
         setEggCountState(1);
     }
   }, [flourWeight, useEgg, eggCountState]);
+
+  // Flour Composition Logic
+  const calculatedFlourData = useMemo(() => {
+    if (!useDetailedFlourComposition || flourWeight <= 0) {
+      return [{ id: 'totalFlour', name: 'Flour (Total)', percentage: 100, weight: flourWeight, shareValue: 100 }];
+    }
+
+    let currentTotalShares = flourSpecs.reduce((sum, s) => sum + s.shareValue, 0);
+    
+    // Create a working copy of specs for this calculation
+    let specsForCalc = flourSpecs.map(s => ({ ...s }));
+
+    if (currentTotalShares === 0 && specsForCalc.length > 0) {
+      // If all shares are zero, and there are specs, give the first spec a share of 1
+      // to ensure totalFlourWeight is attributed and to avoid division by zero.
+      // Prioritize predefined flours if available.
+      const firstPredefinedIndex = specsForCalc.findIndex(s => s.isPredefined);
+      const targetIndex = firstPredefinedIndex !== -1 ? firstPredefinedIndex : 0;
+      
+      specsForCalc = specsForCalc.map((s, idx) => 
+        idx === targetIndex ? { ...s, shareValue: 1 } : { ...s, shareValue: 0 }
+      );
+      currentTotalShares = 1;
+    } else if (currentTotalShares === 0 && specsForCalc.length === 0) {
+      return []; // No flour specs, return empty
+    }
+    
+    return specsForCalc.map(spec => {
+      const percentage = currentTotalShares > 0 ? (spec.shareValue / currentTotalShares) * 100 : 0;
+      const weight = (percentage / 100) * flourWeight;
+      return {
+        id: spec.id,
+        name: spec.name,
+        percentage: percentage,
+        weight: weight,
+        shareValue: spec.shareValue, // pass original shareValue
+        isCustom: spec.isCustom,
+        isPredefined: spec.isPredefined,
+      };
+    });
+  }, [flourSpecs, flourWeight, useDetailedFlourComposition]);
+
+
+  const handleToggleDetailedFlourComposition = (checked: boolean) => {
+    setUseDetailedFlourComposition(checked);
+    if (checked && flourSpecs.length === 0) { // Initialize if empty
+      setFlourSpecs(initialFlourComposition());
+    }
+  };
+
+  const handleAddCustomFlour = () => {
+    const nextCustomFlourId = `customFlour-${Date.now()}`;
+    const newFlour: FlourSpec = {
+      id: nextCustomFlourId,
+      name: `Custom Flour ${flourSpecs.filter(fs => fs.isCustom).length + 1}`,
+      shareValue: 0, // Start with 0 share, user can adjust
+      isCustom: true,
+      isPredefined: false,
+    };
+    setFlourSpecs([...flourSpecs, newFlour]);
+  };
+
+  const handleUpdateFlourSpecShare = (id: string, newShareValue: number) => {
+    setFlourSpecs(prevSpecs =>
+      prevSpecs.map(spec =>
+        spec.id === id ? { ...spec, shareValue: Math.max(0, newShareValue) } : spec
+      )
+    );
+  };
+  
+  const handleUpdateCustomFlourName = (id: string, newName: string) => {
+    setFlourSpecs(prevSpecs =>
+      prevSpecs.map(spec =>
+        spec.id === id && spec.isCustom ? { ...spec, name: newName } : spec
+      )
+    );
+  };
+
+  const handleRemoveCustomFlour = (idToRemove: string) => {
+    setFlourSpecs(prevSpecs => {
+      const newSpecs = prevSpecs.filter(spec => spec.id !== idToRemove);
+      // Ensure at least one flour remains, preferably a predefined one if all shares become 0
+      const totalSharesRemaining = newSpecs.reduce((sum, s) => sum + s.shareValue, 0);
+      if (newSpecs.length > 0 && totalSharesRemaining === 0) {
+        const firstPredefinedIdx = newSpecs.findIndex(s => s.isPredefined);
+        const targetIdx = firstPredefinedIdx !== -1 ? firstPredefinedIdx : 0;
+        return newSpecs.map((s, idx) => idx === targetIdx ? { ...s, shareValue: 100 } : s);
+      }
+      return newSpecs.length === 0 ? initialFlourComposition() : newSpecs; // Reset if empty
+    });
+  };
 
 
   // Custom amendments logic
@@ -135,6 +242,8 @@ export default function DoughMasterApp() {
       waterPercentage, 
       saltPercentage,
       yeastPercentage,
+      useDetailedFlourComposition,
+      flourComposition: useDetailedFlourComposition ? flourSpecs : undefined,
       amendments,
       useSugar,
       sugarPercentage: sugarPercentageState,
@@ -155,7 +264,7 @@ export default function DoughMasterApp() {
       setSavedRecipes([...savedRecipes, newRecipe]);
       toast({ title: "Recipe Saved", description: `"${newRecipe.name}" has been saved.` });
     }
-    if (!savedRecipes.find(r => r.name === newRecipe.name) || selectedRecipeToLoad !== newRecipe.name) {
+     if (!savedRecipes.find(r => r.name === newRecipe.name) || selectedRecipeToLoad !== newRecipe.name) {
        setSelectedRecipeToLoad(newRecipe.name);
     }
   };
@@ -172,6 +281,10 @@ export default function DoughMasterApp() {
       setWaterPercentage(recipeToLoad.waterPercentage);
       setSaltPercentage(recipeToLoad.saltPercentage);
       setYeastPercentage(recipeToLoad.yeastPercentage);
+      
+      setUseDetailedFlourComposition(recipeToLoad.useDetailedFlourComposition ?? initialRecipeState.useDetailedFlourComposition!);
+      setFlourSpecs(recipeToLoad.flourComposition && recipeToLoad.flourComposition.length > 0 ? recipeToLoad.flourComposition : initialFlourComposition());
+      
       setAmendments(recipeToLoad.amendments);
       
       setUseSugar(recipeToLoad.useSugar ?? initialRecipeState.useSugar!);
@@ -206,6 +319,10 @@ export default function DoughMasterApp() {
     setWaterPercentage(initialRecipeState.waterPercentage);
     setSaltPercentage(initialRecipeState.saltPercentage);
     setYeastPercentage(initialRecipeState.yeastPercentage);
+
+    setUseDetailedFlourComposition(initialRecipeState.useDetailedFlourComposition!);
+    setFlourSpecs(initialFlourComposition());
+
     setAmendments(initialRecipeState.amendments);
 
     setUseSugar(initialRecipeState.useSugar!);
@@ -224,6 +341,7 @@ export default function DoughMasterApp() {
   };
 
   const totalDoughWeight = useMemo(() => {
+    // Total flour weight is simply flourWeight state
     return flourWeight + waterWeight + saltWeight + yeastWeight +
            sugarWeight + totalEggWeight + butterWeight + oilWeight +
            amendments.reduce((sum, am) => sum + am.weight, 0);
@@ -237,10 +355,20 @@ export default function DoughMasterApp() {
 
   const finalIngredientsList = useMemo(() => {
     const ingredients: { name: string; quantity: string }[] = [];
-    if (flourWeight > 0) ingredients.push({ name: 'Flour', quantity: `${flourWeight.toFixed(1)}g` });
+    
+    if (useDetailedFlourComposition) {
+      calculatedFlourData.forEach(flour => {
+        if (flour.weight > 0) {
+          ingredients.push({ name: flour.name, quantity: `${flour.weight.toFixed(1)}g (${flour.percentage.toFixed(1)}%)` });
+        }
+      });
+    } else if (flourWeight > 0) {
+      ingredients.push({ name: 'Flour (Total)', quantity: `${flourWeight.toFixed(1)}g` });
+    }
+
     if (waterWeight > 0) ingredients.push({ name: 'Added Water', quantity: `${waterWeight.toFixed(1)}g` });
     if (saltWeight > 0) ingredients.push({ name: 'Salt', quantity: `${saltWeight.toFixed(1)}g` });
-    if (yeastWeight > 0) ingredients.push({ name: 'Yeast', quantity: `${yeastWeight.toFixed(Math.max(1, yeastWeight % 1 === 0 ? 1 : 2))}g` }); // Show more precision for small yeast amounts
+    if (yeastWeight > 0) ingredients.push({ name: 'Yeast', quantity: `${yeastWeight.toFixed(Math.max(1, yeastWeight % 1 === 0 ? 1 : 2))}g` });
 
     if (useSugar && sugarWeight > 0) ingredients.push({ name: 'Sugar', quantity: `${sugarWeight.toFixed(1)}g` });
     if (useEgg && totalEggWeight > 0) ingredients.push({ name: `Eggs (${eggCountState} whole)`, quantity: `${totalEggWeight.toFixed(0)}g` });
@@ -259,7 +387,8 @@ export default function DoughMasterApp() {
     useEgg, eggCountState, totalEggWeight,
     useButter, butterWeight,
     useOil, oilWeight,
-    amendments
+    amendments,
+    useDetailedFlourComposition, calculatedFlourData
   ]);
 
 
@@ -289,9 +418,41 @@ export default function DoughMasterApp() {
             className="mt-1 text-base"
             min="0"
           />
+          <div className="mt-4 space-y-2 p-3 border rounded-md bg-background/70 shadow-sm">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="useDetailedFlourComposition"
+                checked={useDetailedFlourComposition}
+                onCheckedChange={(checked) => handleToggleDetailedFlourComposition(Boolean(checked))}
+              />
+              <Label htmlFor="useDetailedFlourComposition" className="text-sm font-medium">
+                Use Detailed Flour Composition
+              </Label>
+            </div>
+            {useDetailedFlourComposition && (
+              <div className="space-y-3 pt-2">
+                {calculatedFlourData.filter(f => f.id !== 'totalFlour').map((flourData) => ( // Filter out placeholder if detailed is off
+                  <FlourSpecItem
+                    key={flourData.id}
+                    spec={{id: flourData.id, name: flourData.name, shareValue: flourData.shareValue, isCustom: flourData.isCustom, isPredefined: flourData.isPredefined}}
+                    calculatedPercentage={flourData.percentage}
+                    calculatedWeight={flourData.weight}
+                    onShareValueChange={handleUpdateFlourSpecShare}
+                    onNameChange={handleUpdateCustomFlourName}
+                    onRemove={handleRemoveCustomFlour}
+                    // Disable remove if it's the only flour with share > 0
+                    disableRemove={flourData.isCustom && calculatedFlourData.filter(f => f.shareValue > 0).length === 1 && flourData.shareValue > 0}
+                  />
+                ))}
+                <Button onClick={handleAddCustomFlour} variant="outline" size="sm" className="w-full border-dashed hover:border-solid hover:bg-accent/20 transition-colors">
+                  <WheatIcon className="mr-2 h-4 w-4" /> Add Custom Flour Type
+                </Button>
+              </div>
+            )}
+          </div>
         </CardSection>
 
-        <CardSection title="Core Ingredients (Baker's %)">
+        <CardSection title="Core Ingredients (Baker's % of Total Flour)">
           <div className="grid md:grid-cols-3 gap-4">
             <IngredientSlider 
               label="Added Water" 
@@ -299,14 +460,14 @@ export default function DoughMasterApp() {
               onChange={setWaterPercentage} 
               min={0} max={150} step={0.1} 
               calculatedWeight={waterWeight} 
-              tooltipContent="This is water you add, excluding water from eggs."
+              tooltipContent="This is water you add, excluding water from eggs. Percentage is based on Total Flour Weight."
             />
             <IngredientSlider label="Salt" value={saltPercentage} onChange={setSaltPercentage} min={0} max={5} step={0.05} calculatedWeight={saltWeight} />
             <IngredientSlider label="Yeast" value={yeastPercentage} onChange={setYeastPercentage} min={0} max={3} step={0.01} calculatedWeight={yeastWeight} />
           </div>
         </CardSection>
         
-        <CardSection title="Common Additions" description="Optionally include and adjust common ingredients. Percentages are based on flour weight.">
+        <CardSection title="Common Additions" description="Optionally include and adjust common ingredients. Percentages are based on Total Flour Weight.">
           <div className="space-y-4">
             {/* Sugar */}
             <div className="p-3 border rounded-md bg-background/70 shadow-sm">
@@ -549,4 +710,3 @@ const CardSection: React.FC<{ title: string; description?: string; children: Rea
     </CardContent>
   </Card>
 );
-
