@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PlusCircleIcon, SaveIcon, DownloadIcon, Trash2Icon, RotateCcwIcon, ChefHatIcon, InfoIcon } from "lucide-react";
+import { PlusCircleIcon, SaveIcon, DownloadIcon, Trash2Icon, RotateCcwIcon, ChefHatIcon, InfoIcon, ListChecksIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
@@ -94,25 +94,16 @@ export default function DoughMasterApp() {
     }
   };
   
-  // Update default egg count if flour weight changes and eggs are active but count is at a typical "initial default"
   useEffect(() => {
     if (useEgg && flourWeight > 0) {
         const calculatedDefaultEggs = Math.max(1, Math.round(flourWeight / FLOUR_PER_EGG_G));
-        // This logic ensures that if the user actively set it to something, it's not overridden
-        // unless it's at the very initial default of 1 and flour implies more.
-        if (eggCountState <= 1 || eggCountState !== calculatedDefaultEggs) { 
-             // Heuristic: if current eggCount is 1 (common initial) or less, or not matching current flour based calculation, offer to update.
-             // For simplicity now, let's just update it if it's significantly different or 0/1.
-             // A more advanced logic could be to only set it if it was the *initial default*.
-             // Let's refine: only set if it's the placeholder '1' and flour suggests more, or if it's zero.
-             if (eggCountState === 0 || (eggCountState === 1 && calculatedDefaultEggs > 1) ) {
-                setEggCountState(calculatedDefaultEggs);
-             }
+        if (eggCountState === 0 || (eggCountState === 1 && calculatedDefaultEggs > 1) ) {
+            setEggCountState(calculatedDefaultEggs);
         }
     } else if (useEgg && flourWeight === 0 && eggCountState === 0) {
-        setEggCountState(1); // if eggs active but no flour, default to 1
+        setEggCountState(1);
     }
-  }, [flourWeight, useEgg]);
+  }, [flourWeight, useEgg, eggCountState]);
 
 
   // Custom amendments logic
@@ -141,7 +132,7 @@ export default function DoughMasterApp() {
     const newRecipe: Recipe = {
       name: recipeName.trim(),
       flourWeight,
-      waterPercentage, // Added water percentage
+      waterPercentage, 
       saltPercentage,
       yeastPercentage,
       amendments,
@@ -243,6 +234,33 @@ export default function DoughMasterApp() {
     const totalWaterInRecipe = waterWeight + waterFromEggs;
     return (totalWaterInRecipe / flourWeight) * 100;
   }, [flourWeight, waterWeight, waterFromEggs]);
+
+  const finalIngredientsList = useMemo(() => {
+    const ingredients: { name: string; quantity: string }[] = [];
+    if (flourWeight > 0) ingredients.push({ name: 'Flour', quantity: `${flourWeight.toFixed(1)}g` });
+    if (waterWeight > 0) ingredients.push({ name: 'Added Water', quantity: `${waterWeight.toFixed(1)}g` });
+    if (saltWeight > 0) ingredients.push({ name: 'Salt', quantity: `${saltWeight.toFixed(1)}g` });
+    if (yeastWeight > 0) ingredients.push({ name: 'Yeast', quantity: `${yeastWeight.toFixed(Math.max(1, yeastWeight % 1 === 0 ? 1 : 2))}g` }); // Show more precision for small yeast amounts
+
+    if (useSugar && sugarWeight > 0) ingredients.push({ name: 'Sugar', quantity: `${sugarWeight.toFixed(1)}g` });
+    if (useEgg && totalEggWeight > 0) ingredients.push({ name: `Eggs (${eggCountState} whole)`, quantity: `${totalEggWeight.toFixed(0)}g` });
+    if (useButter && butterWeight > 0) ingredients.push({ name: 'Butter', quantity: `${butterWeight.toFixed(1)}g` });
+    if (useOil && oilWeight > 0) ingredients.push({ name: 'Oil', quantity: `${oilWeight.toFixed(1)}g` });
+
+    amendments.forEach(am => {
+      if (am.name.trim() && am.weight > 0) {
+        ingredients.push({ name: am.name, quantity: `${am.weight.toFixed(1)}g` });
+      }
+    });
+    return ingredients;
+  }, [
+    flourWeight, waterWeight, saltWeight, yeastWeight,
+    useSugar, sugarWeight,
+    useEgg, eggCountState, totalEggWeight,
+    useButter, butterWeight,
+    useOil, oilWeight,
+    amendments
+  ]);
 
 
   return (
@@ -458,6 +476,26 @@ export default function DoughMasterApp() {
               <Label htmlFor="recipeName" className="text-sm font-medium">Recipe Name</Label>
               <Input id="recipeName" type="text" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder="e.g., My Sourdough" className="mt-1 text-base"/>
             </div>
+            
+            <div className="mt-4 pt-4 border-t border-border/30">
+              <h4 className="text-md font-semibold mb-3 flex items-center">
+                <ListChecksIcon className="mr-2 h-5 w-5 text-primary" />
+                Final Recipe Ingredients:
+              </h4>
+              {finalIngredientsList.length > 0 ? (
+                <ul className="space-y-1.5 text-sm pl-1">
+                  {finalIngredientsList.map((item, index) => (
+                    <li key={index} className="flex justify-between items-center py-0.5">
+                      <span className="text-muted-foreground">{item.name}:</span>
+                      <span className="font-medium text-foreground bg-background/50 px-2 py-0.5 rounded-sm">{item.quantity}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-2">No ingredients specified yet.</p>
+              )}
+            </div>
+
             <Button onClick={handleSaveRecipe} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
               <SaveIcon className="mr-2 h-4 w-4" /> Save Current Recipe
             </Button>
