@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PlusCircleIcon, SaveIcon, DownloadIcon, Trash2Icon, RotateCcwIcon, ChefHatIcon, InfoIcon, ListChecksIcon, Settings2Icon, WheatIcon, MilkIcon, BeakerIcon, DropletsIcon } from "lucide-react";
+import { PlusCircleIcon, SaveIcon, DownloadIcon, Trash2Icon, RotateCcwIcon, ChefHatIcon, InfoIcon, ListChecksIcon, Settings2Icon, WheatIcon, MilkIcon, BeakerIcon, DropletsIcon, PrinterIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import IngredientSlider from './ingredient-slider';
@@ -136,19 +136,15 @@ export default function DoughMasterApp() {
   const handleToggleUseEgg = (checked: boolean) => {
     setUseEgg(checked);
     if (checked) {
-      // If turning eggs ON and current count is 0, set a default.
-      // Otherwise, respect the existing count (even if it's 1).
       if (eggCountState === 0) { 
         const defaultEggs = flourWeight > 0 
                             ? Math.max(1, Math.round(flourWeight / FLOUR_PER_EGG_G)) 
-                            : 1; // Default to 1 if no flour or if calculated is less than 1
+                            : 1; 
         setEggCountState(defaultEggs);
       }
     }
-    // If turning eggs OFF, eggCountState can remain; its effect is nullified by useEgg=false.
   };
   
-  // Effect to ensure eggCountState is at least 1 if useEgg is true
   useEffect(() => {
     if (useEgg && eggCountState === 0) {
       setEggCountState(1);
@@ -159,7 +155,7 @@ export default function DoughMasterApp() {
   // Flour Composition Logic
   const calculatedFlourData = useMemo(() => {
     if (!useDetailedFlourComposition || flourWeight <= 0) {
-      return [{ id: 'totalFlour', name: 'Flour (Total)', percentage: 100, weight: flourWeight, shareValue: 100 }];
+      return [{ id: 'totalFlour', name: 'Flour (Total)', percentage: 100, weight: flourWeight, shareValue: 100, isCustom: false, isPredefined: false }];
     }
     let currentTotalShares = flourSpecs.reduce((sum, s) => sum + s.shareValue, 0);
     let specsForCalc = flourSpecs.map(s => ({ ...s }));
@@ -237,7 +233,7 @@ export default function DoughMasterApp() {
       liquidComposition: useCustomLiquidBlend ? liquidSpecs : undefined,
       amendments,
       useSugar, sugarPercentage: sugarPercentageState,
-      useEgg, eggCount: actualEggCount, // Save the actualEggCount (min 1 if useEgg)
+      useEgg, eggCount: actualEggCount, 
       useButter, butterPercentage: butterPercentageState,
       useOil, oilPercentage: oilPercentageState,
     };
@@ -378,9 +374,7 @@ export default function DoughMasterApp() {
     if (yeastWeight > 0) ingredients.push({ name: 'Yeast', quantity: `${yeastWeight.toFixed(Math.max(1, yeastWeight % 1 === 0 ? 1 : 2))}g` });
 
     if (useSugar && sugarWeight > 0) ingredients.push({ name: 'Sugar', quantity: `${sugarWeight.toFixed(1)}g` });
-    // Egg solids weight (totalEggWeight - waterFromEggs) could be listed if desired, but totalEggWeight is already accounted for in totalDoughWeight.
-    // For simplicity in ingredient list, if waterFromEggs is listed, the "solid" part of egg is implicitly included.
-
+    
     if (useButter && butterWeight > 0) ingredients.push({ name: 'Butter', quantity: `${butterWeight.toFixed(1)}g` });
     if (useOil && oilWeight > 0) ingredients.push({ name: 'Oil', quantity: `${oilWeight.toFixed(1)}g` });
 
@@ -393,7 +387,7 @@ export default function DoughMasterApp() {
   }, [
     flourWeight, actualAddedWaterWeight, saltWeight, yeastWeight,
     useSugar, sugarWeight,
-    useEgg, actualEggCount, totalEggWeight, waterFromEggs, // use actualEggCount here
+    useEgg, actualEggCount, waterFromEggs, 
     useButter, butterWeight,
     useOil, oilWeight,
     amendments,
@@ -401,11 +395,15 @@ export default function DoughMasterApp() {
     useCustomLiquidBlend, liquidSpecs
   ]);
 
+  const handlePrintRecipe = () => {
+    window.print();
+  };
+
 
   return (
     <TooltipProvider>
     <Card className="w-full max-w-3xl shadow-2xl bg-card/95 backdrop-blur-sm border-border/50">
-      <CardHeader className="text-center pb-4">
+      <CardHeader className="text-center pb-4 no-print">
         <div className="flex items-center justify-center space-x-3 mb-2">
           <ChefHatIcon className="w-10 h-10 text-primary" strokeWidth={1.5} />
           <CardTitle className="text-4xl font-bold tracking-tight">DoughMaster</CardTitle>
@@ -414,7 +412,7 @@ export default function DoughMasterApp() {
       </CardHeader>
       <CardContent className="space-y-6 p-4 md:p-6">
         
-        <CardSection title="Base Flour">
+        <CardSection title="Base Flour" className="no-print">
           <Label htmlFor="flourWeight" className="text-sm font-medium">Total Flour Weight (grams)</Label>
           <Input
             id="flourWeight"
@@ -461,7 +459,7 @@ export default function DoughMasterApp() {
           </div>
         </CardSection>
 
-        <CardSection title="Core Ingredients & Hydration">
+        <CardSection title="Core Ingredients & Hydration" className="no-print">
            <IngredientSlider 
               label="Desired Hydration" 
               value={desiredHydrationPercentage} 
@@ -517,7 +515,7 @@ export default function DoughMasterApp() {
           </div>
         </CardSection>
         
-        <CardSection title="Common Additions" description="Optionally include and adjust common ingredients. Percentages are based on Total Flour Weight.">
+        <CardSection title="Common Additions" description="Optionally include and adjust common ingredients. Percentages are based on Total Flour Weight." className="no-print">
           <div className="space-y-4">
             {/* Sugar */}
             <div className="p-3 border rounded-md bg-background/70 shadow-sm">
@@ -565,13 +563,13 @@ export default function DoughMasterApp() {
                     <Input
                       id="eggCount"
                       type="number"
-                      value={eggCountState <= 0 && useEgg ? 1 : eggCountState} // Display 1 if useEgg is true and state is 0
+                      value={eggCountState <= 0 && useEgg ? 1 : eggCountState} 
                       onChange={(e) => {
                         const count = parseInt(e.target.value, 10);
                         setEggCountState(isNaN(count) || count < 0 ? 0 : count);
                       }}
                       className="w-24 h-9 text-sm" 
-                      min={useEgg ? "1" : "0"} // Dynamically set min based on useEgg
+                      min={useEgg ? "1" : "0"} 
                       step="1"
                     />
                     <span className="text-sm text-muted-foreground">count</span>
@@ -622,7 +620,7 @@ export default function DoughMasterApp() {
           </div>
         </CardSection>
 
-        <CardSection title="Recipe Overview">
+        <CardSection title="Recipe Overview" className="no-print">
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
                 <span>Total Liquid (Target):</span> 
@@ -656,7 +654,7 @@ export default function DoughMasterApp() {
           </div>
         </CardSection>
 
-        <CardSection title="Other Solid Ingredients" description="Add any other solid ingredients not listed above.">
+        <CardSection title="Other Solid Ingredients" description="Add any other solid ingredients not listed above." className="no-print">
           <div className="space-y-3">
             {amendments.map((am, index) => (
               <AmendmentItem key={am.id} amendment={am} onNameChange={handleUpdateAmendmentName} onWeightChange={handleUpdateAmendmentWeight} onRemove={handleRemoveAmendment} index={index} />
@@ -667,18 +665,21 @@ export default function DoughMasterApp() {
           </div>
         </CardSection>
 
-        <Separator className="my-6" />
+        <Separator className="my-6 no-print" />
 
         <CardSection title="Recipe Management">
           <div className="space-y-4">
             <div>
-              <Label htmlFor="recipeName" className="text-sm font-medium">Recipe Name</Label>
-              <Input id="recipeName" type="text" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder="e.g., My Sourdough" className="mt-1 text-base"/>
+              <Label htmlFor="recipeName" className="text-sm font-medium no-print">Recipe Name</Label>
+              <Input id="recipeName" type="text" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder="e.g., My Sourdough" className="mt-1 text-base no-print"/>
             </div>
             
-            <div className="mt-4 pt-4 border-t border-border/30">
+            <div id="printableRecipeArea" className="mt-4 pt-4 border-t border-border/30">
+              {recipeName && recipeName.trim() && recipeName.trim().toLowerCase() !== 'new recipe' && (
+                <h3 className="text-xl font-semibold mb-3 text-center">{recipeName}</h3>
+              )}
               <h4 className="text-md font-semibold mb-3 flex items-center">
-                <ListChecksIcon className="mr-2 h-5 w-5 text-primary" />
+                <ListChecksIcon className="mr-2 h-5 w-5 text-primary no-print-icon" />
                 Final Recipe Ingredients:
               </h4>
               {finalIngredientsList.length > 0 ? (
@@ -694,13 +695,18 @@ export default function DoughMasterApp() {
                 <p className="text-sm text-muted-foreground text-center py-2">No ingredients specified yet.</p>
               )}
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 no-print">
+              <Button onClick={handleSaveRecipe} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                <SaveIcon className="mr-2 h-4 w-4" /> Save Current Recipe
+              </Button>
+              <Button onClick={handlePrintRecipe} variant="outline" className="w-full hover:bg-accent/20 transition-colors">
+                <PrinterIcon className="mr-2 h-4 w-4" /> Print Recipe
+              </Button>
+            </div>
 
-            <Button onClick={handleSaveRecipe} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-              <SaveIcon className="mr-2 h-4 w-4" /> Save Current Recipe
-            </Button>
 
             {savedRecipes.length > 0 && (
-              <div className="space-y-2 pt-2">
+              <div className="space-y-2 pt-2 no-print">
                 <Label htmlFor="loadRecipeSelect" className="text-sm font-medium">Load Saved Recipe</Label>
                  <div className="flex space-x-2 items-center">
                     <Select value={selectedRecipeToLoad} onValueChange={setSelectedRecipeToLoad}>
@@ -722,13 +728,13 @@ export default function DoughMasterApp() {
                  </div>
               </div>
             )}
-            <Button onClick={() => resetToInitialState(true)} variant="outline" className="w-full hover:bg-accent/20 transition-colors">
+            <Button onClick={() => resetToInitialState(true)} variant="outline" className="w-full hover:bg-accent/20 transition-colors no-print">
               <RotateCcwIcon className="mr-2 h-4 w-4" /> Reset Form
             </Button>
           </div>
         </CardSection>
       </CardContent>
-      <CardFooter className="text-center py-4">
+      <CardFooter className="text-center py-4 no-print">
         <p className="text-xs text-muted-foreground w-full">Happy Baking!</p>
       </CardFooter>
     </Card>
@@ -736,8 +742,8 @@ export default function DoughMasterApp() {
   );
 }
 
-const CardSection: React.FC<{ title: string; description?: string; children: React.ReactNode }> = ({ title, description, children }) => (
-  <Card className="bg-card/70 shadow-sm border-border/30">
+const CardSection: React.FC<{ title: string; description?: string; children: React.ReactNode, className?: string }> = ({ title, description, children, className }) => (
+  <Card className={`bg-card/70 shadow-sm border-border/30 ${className}`}>
     <CardHeader className="pb-3 pt-4">
       <CardTitle className="text-lg font-semibold">{title}</CardTitle>
       {description && <CardDescription className="text-xs text-muted-foreground">{description}</CardDescription>}
@@ -747,5 +753,3 @@ const CardSection: React.FC<{ title: string; description?: string; children: Rea
     </CardContent>
   </Card>
 );
-
-    

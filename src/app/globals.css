@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -43,10 +44,6 @@ body {
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
-  /* Dark theme variables are not explicitly requested to be different,
-     so we ensure the base :root serves as the primary dark theme.
-     If a light theme toggle was needed, .dark would be defined differently.
-     For now, this app is dark by default. */
   .dark {
     --background: 220 13% 35%;
     --foreground: 210 40% 98%;
@@ -89,5 +86,96 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+    -webkit-print-color-adjust: exact !important; /* Chrome, Safari, Edge */
+    color-adjust: exact !important; /* Firefox */
+  }
+
+  #printableRecipeArea, #printableRecipeArea * {
+    visibility: visible;
+  }
+
+  #printableRecipeArea {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%; /* Use 100% width; browser will handle paper size */
+    padding: 0.75in; /* Standard print margin */
+    font-family: Arial, Helvetica, sans-serif; /* Common sans-serif font */
+    font-size: 11pt; /* Slightly smaller for print if needed */
+    background: white !important;
+    color: black !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  #printableRecipeArea .no-print-icon {
+      display: none !important;
+  }
+
+  #printableRecipeArea h3 { /* Recipe Name */
+    font-size: 16pt;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 0.4in;
+    color: black !important;
+  }
+
+  #printableRecipeArea h4 { /* "Final Recipe Ingredients:" heading */
+    font-size: 13pt;
+    font-weight: bold;
+    margin-bottom: 0.2in;
+    color: black !important;
+  }
+
+  #printableRecipeArea ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  #printableRecipeArea li {
+    padding: 5px 0;
+    border-bottom: 1px solid #cccccc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: black !important;
+  }
+  #printableRecipeArea li:last-child {
+    border-bottom: none;
+  }
+
+  #printableRecipeArea li > span:first-child { /* Ingredient name */
+    color: black !important;
+    text-align: left;
+  }
+  #printableRecipeArea li > span:last-child { /* Ingredient quantity */
+    font-weight: normal !important; 
+    color: black !important;
+    background-color: transparent !important; 
+    padding: 0 !important; 
+    border-radius: 0 !important; 
+    text-align: right;
+  }
+
+  /* Hide any lingering UI elements that might be inside #printableRecipeArea by mistake */
+  #printableRecipeArea button, 
+  #printableRecipeArea input, 
+  #printableRecipeArea select,
+  #printableRecipeArea textarea,
+  #printableRecipeArea label:not([data-print-label="true"]) /* Allow specific labels if needed */
+  {
+    display: none !important;
+  }
+
+  /* Ensure that elements outside the printable area in the DOM but visually overlaying are hidden */
+  .no-print {
+    display: none !important;
   }
 }
