@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -5,6 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { InfoIcon } from "lucide-react";
+
 
 interface IngredientSliderProps {
   label: string;
@@ -15,6 +19,7 @@ interface IngredientSliderProps {
   step?: number;
   unit?: string;
   calculatedWeight: number;
+  tooltipContent?: string;
 }
 
 const IngredientSlider: FC<IngredientSliderProps> = ({
@@ -26,6 +31,7 @@ const IngredientSlider: FC<IngredientSliderProps> = ({
   step = 0.1,
   unit = "%",
   calculatedWeight,
+  tooltipContent,
 }) => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const numValue = parseFloat(e.target.value);
@@ -53,7 +59,19 @@ const IngredientSlider: FC<IngredientSliderProps> = ({
   return (
     <Card className="bg-card shadow-md transition-all duration-300 hover:shadow-lg">
       <CardHeader className="pb-2 pt-4">
-        <CardTitle className="text-md font-semibold">{label}</CardTitle>
+        <CardTitle className="text-md font-semibold flex items-center justify-between">
+          {label}
+          {tooltipContent && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{tooltipContent}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pb-4">
         <div className="flex items-center justify-between space-x-2">
