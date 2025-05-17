@@ -1,5 +1,5 @@
 
-export interface Amendment { // For custom, user-typed amendments
+export interface Amendment { // For custom, user-typed solid amendments
   id: string;
   name: string;
   weight: number;
@@ -13,17 +13,28 @@ export interface FlourSpec {
   isPredefined?: boolean; // To differentiate predefined from custom-added ones
 }
 
+export interface LiquidSpec {
+  id: string;
+  name: string;
+  weight: number; // in grams
+  isCustom: boolean;
+  isPredefined?: boolean;
+}
+
 export interface Recipe {
   name: string;
   flourWeight: number; // This remains the TOTAL flour weight
-  waterPercentage: number; // Represents ADDED water's percentage relative to total flour
+  desiredHydrationPercentage: number; // User's target total hydration
   saltPercentage: number;
   yeastPercentage: number;
   
   useDetailedFlourComposition?: boolean;
   flourComposition?: FlourSpec[]; // Array of different flour types and their shares
 
-  amendments: Amendment[]; // Custom amendments
+  useCustomLiquidBlend?: boolean;
+  liquidComposition?: LiquidSpec[]; // E.g., Milk, other custom liquids
+
+  amendments: Amendment[]; // Custom solid amendments
 
   // Predefined common additions
   useSugar?: boolean;

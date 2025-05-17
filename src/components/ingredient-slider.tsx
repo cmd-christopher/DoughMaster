@@ -49,11 +49,15 @@ const IngredientSlider: FC<IngredientSliderProps> = ({
   const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const numValue = parseFloat(e.target.value);
      if (isNaN(numValue) || numValue < min) {
-        onChange(min);
+        onChange(min); // Reset to min if invalid or below min
       } else if (numValue > max) {
-        onChange(max);
+        onChange(max); // Reset to max if above max
       }
+      // If valid and within bounds, it's already handled by onChange from handleInputChange
   };
+
+  // Determine the number of decimal places for display based on the step or label
+  const displayPrecision = label === 'Yeast' ? 2 : (step < 1 ? 1 : 0);
 
 
   return (
@@ -67,7 +71,7 @@ const IngredientSlider: FC<IngredientSliderProps> = ({
                 <InfoIcon className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent>
-                <p>{tooltipContent}</p>
+                <p className="max-w-xs">{tooltipContent}</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -76,12 +80,12 @@ const IngredientSlider: FC<IngredientSliderProps> = ({
       <CardContent className="space-y-3 pb-4">
         <div className="flex items-center justify-between space-x-2">
           <Label htmlFor={`${label}-slider`} className="text-xs flex-shrink-0">
-            {value.toFixed(label === 'Yeast' ? 2 : 1)}{unit}
+            {value.toFixed(displayPrecision)}{unit}
           </Label>
           <Input
             type="number"
             id={`${label}-input`}
-            value={value.toFixed(label === 'Yeast' ? 2 : 1)}
+            value={value.toFixed(displayPrecision)}
             onChange={handleInputChange}
             onBlur={handleInputBlur}
             min={min}
@@ -101,7 +105,7 @@ const IngredientSlider: FC<IngredientSliderProps> = ({
           aria-label={`${label} percentage slider`}
         />
         <p className="text-xs text-muted-foreground">
-          Weight: <span className="font-medium text-foreground">{calculatedWeight.toFixed(1)}g</span>
+          Total Weight: <span className="font-medium text-foreground">{calculatedWeight.toFixed(1)}g</span>
         </p>
       </CardContent>
     </Card>
