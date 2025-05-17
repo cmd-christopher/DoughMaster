@@ -52,14 +52,14 @@ const initialLiquidComposition = (): LiquidSpec[] => [
 const initialRecipeState: Recipe = {
   name: 'New Recipe',
   flourWeight: 500,
-  desiredHydrationPercentage: 65, // Changed from waterPercentage
+  desiredHydrationPercentage: 65, 
   saltPercentage: 2,
   yeastPercentage: 1,
   useDetailedFlourComposition: false,
   flourComposition: initialFlourComposition(),
   useCustomLiquidBlend: false,
   liquidComposition: initialLiquidComposition(),
-  amendments: [], // For other solid ingredients
+  amendments: [], 
   useSugar: false,
   sugarPercentage: 5,
   useEgg: false,
@@ -111,8 +111,10 @@ export default function DoughMasterApp() {
   const oilWeight = useMemo(() => useOil ? (flourWeight * oilPercentageState) / 100 : 0, [useOil, flourWeight, oilPercentageState]);
   
   // Egg calculations
-  const totalEggWeight = useMemo(() => useEgg ? eggCountState * EGG_WEIGHT_G : 0, [useEgg, eggCountState]);
-  const waterFromEggs = useMemo(() => useEgg ? (totalEggWeight * EGG_WATER_CONTENT_PERCENTAGE) / 100 : 0, [useEgg, totalEggWeight]);
+  const actualEggCount = useMemo(() => useEgg ? Math.max(1, eggCountState) : 0, [useEgg, eggCountState]);
+  const totalEggWeight = useMemo(() => actualEggCount * EGG_WEIGHT_G, [actualEggCount]);
+  const waterFromEggs = useMemo(() => (totalEggWeight * EGG_WATER_CONTENT_PERCENTAGE) / 100, [totalEggWeight]);
+
 
   // Liquid calculations
   const totalLiquidNeededForDesiredHydration = useMemo(() => {
@@ -134,25 +136,25 @@ export default function DoughMasterApp() {
   const handleToggleUseEgg = (checked: boolean) => {
     setUseEgg(checked);
     if (checked) {
-      if (eggCountState === 0 && flourWeight > 0) {
-        const defaultEggs = Math.max(1, Math.round(flourWeight / FLOUR_PER_EGG_G));
+      // If turning eggs ON and current count is 0, set a default.
+      // Otherwise, respect the existing count (even if it's 1).
+      if (eggCountState === 0) { 
+        const defaultEggs = flourWeight > 0 
+                            ? Math.max(1, Math.round(flourWeight / FLOUR_PER_EGG_G)) 
+                            : 1; // Default to 1 if no flour or if calculated is less than 1
         setEggCountState(defaultEggs);
-      } else if (eggCountState === 0 && flourWeight === 0) {
-        setEggCountState(1);
       }
     }
+    // If turning eggs OFF, eggCountState can remain; its effect is nullified by useEgg=false.
   };
   
+  // Effect to ensure eggCountState is at least 1 if useEgg is true
   useEffect(() => {
-    if (useEgg && flourWeight > 0) {
-        const calculatedDefaultEggs = Math.max(1, Math.round(flourWeight / FLOUR_PER_EGG_G));
-        if (eggCountState === 0 || (eggCountState === 1 && calculatedDefaultEggs > 1) ) {
-            setEggCountState(calculatedDefaultEggs);
-        }
-    } else if (useEgg && flourWeight === 0 && eggCountState === 0) {
-        setEggCountState(1);
+    if (useEgg && eggCountState === 0) {
+      setEggCountState(1);
     }
-  }, [flourWeight, useEgg, eggCountState]);
+  }, [useEgg, eggCountState]);
+
 
   // Flour Composition Logic
   const calculatedFlourData = useMemo(() => {
@@ -203,14 +205,11 @@ export default function DoughMasterApp() {
     setUseCustomLiquidBlend(checked);
     if (checked && liquidSpecs.length === 0) {
       setLiquidSpecs(initialLiquidComposition());
-    } else if (!checked) {
-      // Optionally reset liquidSpecs if unchecking, or retain their values
-      // setLiquidSpecs(initialLiquidComposition()); // Uncomment to reset
-    }
+    } 
   };
   const handleAddCustomLiquid = () => setLiquidSpecs([...liquidSpecs, { id: crypto.randomUUID(), name: `Custom Liquid ${liquidSpecs.filter(ls => ls.isCustom).length + 1}`, weight: 0, isCustom: true, isPredefined: false }]);
   const handleUpdateLiquidSpecWeight = (id: string, weight: number) => setLiquidSpecs(prev => prev.map(l => l.id === id ? { ...l, weight: Math.max(0, weight) } : l));
-  const handleUpdateCustomLiquidName = (id: string, newName: string) => setLiquidSpecs(prev => prev.map(l => l.id === id && l.isCustom ? { ...l, name: newName } : l));
+  const handleUpdateCustomLiquidName = (id: string, newName: string) => setLiquidSpecs(prev => prev.map(l => l.id === id && l.isCustom ? { ...l, name: newName } : s));
   const handleRemoveCustomLiquid = (idToRemove: string) => setLiquidSpecs(prev => prev.filter(l => l.id !== idToRemove));
 
 
@@ -238,7 +237,7 @@ export default function DoughMasterApp() {
       liquidComposition: useCustomLiquidBlend ? liquidSpecs : undefined,
       amendments,
       useSugar, sugarPercentage: sugarPercentageState,
-      useEgg, eggCount: eggCountState,
+      useEgg, eggCount: actualEggCount, // Save the actualEggCount (min 1 if useEgg)
       useButter, butterPercentage: butterPercentageState,
       useOil, oilPercentage: oilPercentageState,
     };
@@ -280,12 +279,16 @@ export default function DoughMasterApp() {
       
       setUseSugar(recipeToLoad.useSugar ?? initialRecipeState.useSugar!);
       setSugarPercentageState(recipeToLoad.sugarPercentage ?? initialRecipeState.sugarPercentage!);
+      
+      const eggCountToLoad = recipeToLoad.eggCount ?? initialRecipeState.eggCount!;
       setUseEgg(recipeToLoad.useEgg ?? initialRecipeState.useEgg!);
-      setEggCountState(recipeToLoad.eggCount ?? initialRecipeState.eggCount!);
+      setEggCountState(recipeToLoad.useEgg ? Math.max(1, eggCountToLoad) : eggCountToLoad);
+
+
       setUseButter(recipeToLoad.useButter ?? initialRecipeState.useButter!);
       setButterPercentageState(recipeToLoad.butterPercentage ?? initialRecipeState.butterPercentage!);
       setUseOil(recipeToLoad.useOil ?? initialRecipeState.useOil!);
-      setOilPercentageState(recipeToLoad.oilPercentage ?? initialRecipeState.oilPercentage!);
+      setOilPercentageState(recipeToLoad.oilPercentage!);
       
       toast({ title: "Recipe Loaded", description: `"${recipeToLoad.name}" has been loaded.` });
     }
@@ -337,11 +340,10 @@ export default function DoughMasterApp() {
   const totalDoughWeight = useMemo(() => {
     return flourWeight + actualAddedWaterWeight + saltWeight + yeastWeight +
            sugarWeight + totalEggWeight + butterWeight + oilWeight +
-           liquidsFromSpecsWeight + // Add weight of milk and other custom liquids
+           liquidsFromSpecsWeight + 
            amendments.reduce((sum, am) => sum + am.weight, 0);
   }, [flourWeight, actualAddedWaterWeight, saltWeight, yeastWeight, sugarWeight, totalEggWeight, butterWeight, oilWeight, liquidsFromSpecsWeight, amendments]);
 
-  // Overall hydration display should simply be the desired percentage.
   const overallHydrationDisplay = useMemo(() => {
       if (flourWeight <= 0) return 0;
       return desiredHydrationPercentage;
@@ -362,7 +364,7 @@ export default function DoughMasterApp() {
     }
 
     if (actualAddedWaterWeight > 0) ingredients.push({ name: 'Net Added Water', quantity: `${actualAddedWaterWeight.toFixed(1)}g` });
-    if (useEgg && waterFromEggs > 0) ingredients.push({ name: `Water from Eggs (${eggCountState} whole)`, quantity: `${waterFromEggs.toFixed(1)}g (contributes to hydration)` });
+    if (useEgg && waterFromEggs > 0) ingredients.push({ name: `Water from Eggs (${actualEggCount} whole)`, quantity: `${waterFromEggs.toFixed(1)}g (contributes to hydration)` });
     
     if(useCustomLiquidBlend) {
         liquidSpecs.forEach(liquid => {
@@ -376,12 +378,8 @@ export default function DoughMasterApp() {
     if (yeastWeight > 0) ingredients.push({ name: 'Yeast', quantity: `${yeastWeight.toFixed(Math.max(1, yeastWeight % 1 === 0 ? 1 : 2))}g` });
 
     if (useSugar && sugarWeight > 0) ingredients.push({ name: 'Sugar', quantity: `${sugarWeight.toFixed(1)}g` });
-    if (useEgg && totalEggWeight > 0 && waterFromEggs === 0) { // If egg contributes 0 water (e.g. egg white powder - future) but has weight
-         ingredients.push({ name: `Eggs (${eggCountState} whole)`, quantity: `${totalEggWeight.toFixed(0)}g` });
-    } else if (useEgg && totalEggWeight > 0 && waterFromEggs > 0) {
-         // Egg weight is implicitly part of water from eggs for display simplicity in ingredients list here
-    }
-
+    // Egg solids weight (totalEggWeight - waterFromEggs) could be listed if desired, but totalEggWeight is already accounted for in totalDoughWeight.
+    // For simplicity in ingredient list, if waterFromEggs is listed, the "solid" part of egg is implicitly included.
 
     if (useButter && butterWeight > 0) ingredients.push({ name: 'Butter', quantity: `${butterWeight.toFixed(1)}g` });
     if (useOil && oilWeight > 0) ingredients.push({ name: 'Oil', quantity: `${oilWeight.toFixed(1)}g` });
@@ -395,7 +393,7 @@ export default function DoughMasterApp() {
   }, [
     flourWeight, actualAddedWaterWeight, saltWeight, yeastWeight,
     useSugar, sugarWeight,
-    useEgg, eggCountState, totalEggWeight, waterFromEggs,
+    useEgg, actualEggCount, totalEggWeight, waterFromEggs, // use actualEggCount here
     useButter, butterWeight,
     useOil, oilWeight,
     amendments,
@@ -485,7 +483,7 @@ export default function DoughMasterApp() {
                 </div>
                 {useCustomLiquidBlend && (
                     <div className="space-y-3 pt-2">
-                        {liquidSpecs.filter(ls => ls.isPredefined).map((liquid) => ( // Show predefined (Milk) first
+                        {liquidSpecs.filter(ls => ls.isPredefined).map((liquid) => ( 
                              <LiquidSpecItem
                                 key={liquid.id}
                                 liquidSpec={liquid}
@@ -513,7 +511,7 @@ export default function DoughMasterApp() {
                     <span className="ml-1 font-semibold text-primary">{actualAddedWaterWeight.toFixed(1)}g</span>
                 </div>
             </div>
-          <div className="grid md:grid-cols-2 gap-4 mt-4"> {/* Salt and Yeast */}
+          <div className="grid md:grid-cols-2 gap-4 mt-4"> 
             <IngredientSlider label="Salt" value={saltPercentage} onChange={setSaltPercentage} min={0} max={5} step={0.05} calculatedWeight={saltWeight} tooltipContent="Baker's % of Total Flour Weight." />
             <IngredientSlider label="Yeast" value={yeastPercentage} onChange={setYeastPercentage} min={0} max={3} step={0.01} calculatedWeight={yeastWeight} tooltipContent="Baker's % of Total Flour Weight." />
           </div>
@@ -567,13 +565,17 @@ export default function DoughMasterApp() {
                     <Input
                       id="eggCount"
                       type="number"
-                      value={eggCountState}
-                      onChange={(e) => setEggCountState(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-24 h-9 text-sm" min="0" step="1"
+                      value={eggCountState <= 0 && useEgg ? 1 : eggCountState} // Display 1 if useEgg is true and state is 0
+                      onChange={(e) => {
+                        const count = parseInt(e.target.value, 10);
+                        setEggCountState(isNaN(count) || count < 0 ? 0 : count);
+                      }}
+                      className="w-24 h-9 text-sm" 
+                      min={useEgg ? "1" : "0"} // Dynamically set min based on useEgg
+                      step="1"
                     />
                     <span className="text-sm text-muted-foreground">count</span>
                   </div>
-                   {/* Removed note about adjusting water as it's now automatic */}
                 </div>
               )}
             </div>
@@ -745,3 +747,5 @@ const CardSection: React.FC<{ title: string; description?: string; children: Rea
     </CardContent>
   </Card>
 );
+
+    
