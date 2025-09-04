@@ -459,7 +459,7 @@ export default function DoughMasterApp({ initialRecipeName, hideLoadControls = f
       )}
       <CardContent className="space-y-6 p-4 md:p-6">
         {/* Final ingredients at the very top */}
-        <CardSection title="Final Recipe Ingredients" className="no-print">
+        <CardSection title="Final Recipe Ingredients">
           <div id="printableRecipeArea">
             {recipeName && recipeName.trim() && recipeName.trim().toLowerCase() !== 'new recipe' && (
               <h3 className="text-xl font-semibold mb-3 text-center">{recipeName}</h3>
