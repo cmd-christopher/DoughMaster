@@ -70,7 +70,7 @@ const initialRecipeState: Recipe = {
   oilPercentage: 3,
 };
 
-export default function DoughMasterApp({ initialRecipeName, hideLoadControls = false }: { initialRecipeName?: string; hideLoadControls?: boolean } = {}) {
+export default function DoughMasterApp({ initialRecipeName, hideLoadControls = false, hideHeroHeader = false }: { initialRecipeName?: string; hideLoadControls?: boolean; hideHeroHeader?: boolean } = {}) {
   const { toast } = useToast();
   const [recipeName, setRecipeName] = useState<string>(initialRecipeState.name);
   const [flourWeight, setFlourWeight] = useState<number>(initialRecipeState.flourWeight);
@@ -449,15 +449,38 @@ export default function DoughMasterApp({ initialRecipeName, hideLoadControls = f
   return (
     <TooltipProvider>
     <Card className="w-full max-w-3xl shadow-2xl bg-card/95 backdrop-blur-sm border-border/50">
-      <CardHeader className="text-center pb-4 no-print">
-        <div className="flex items-center justify-center space-x-3 mb-2">
-          <ChefHatIcon className="w-10 h-10 text-primary" strokeWidth={1.5} />
-          <CardTitle className="text-4xl font-bold tracking-tight">DoughMaster</CardTitle>
-        </div>
-        <CardDescription className="text-md text-muted-foreground">Craft your perfect bread recipe.</CardDescription>
-      </CardHeader>
+      {!hideHeroHeader && (
+        <CardHeader className="text-center pb-4 no-print">
+          <div className="flex items-center justify-center space-x-3 mb-2">
+            <ChefHatIcon className="w-10 h-10 text-primary" strokeWidth={1.5} />
+            <CardTitle className="text-4xl font-bold tracking-tight">DoughMaster</CardTitle>
+          </div>
+          <CardDescription className="text-md text-muted-foreground">Craft your perfect bread recipe.</CardDescription>
+        </CardHeader>
+      )}
       <CardContent className="space-y-6 p-4 md:p-6">
-        {/* Name input moved up for prominence */}
+        {/* Final ingredients at the very top */}
+        <CardSection title="Final Recipe Ingredients" className="no-print">
+          <div id="printableRecipeArea">
+            {recipeName && recipeName.trim() && recipeName.trim().toLowerCase() !== 'new recipe' && (
+              <h3 className="text-xl font-semibold mb-3 text-center">{recipeName}</h3>
+            )}
+            {finalIngredientsList.length > 0 ? (
+              <ul className="space-y-1.5 text-sm pl-1">
+                {finalIngredientsList.map((item, index) => (
+                  <li key={index} className="flex justify-between items-center py-0.5">
+                    <span className="text-muted-foreground">{item.name}:</span>
+                    <span className="font-medium text-foreground bg-background/50 px-2 py-0.5 rounded-sm">{item.quantity}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-2">No ingredients specified yet.</p>
+            )}
+          </div>
+        </CardSection>
+
+        {/* Name input just below final ingredients */}
         <CardSection title="Recipe Name" className="no-print">
           <Input id="recipeName" type="text" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder="e.g., Sandwich Rolls" className="mt-1 text-base"/>
         </CardSection>
@@ -704,26 +727,7 @@ export default function DoughMasterApp({ initialRecipeName, hideLoadControls = f
           </div>
         </CardSection>
 
-        {/* Prominent final ingredients at top-ish */}
-        <CardSection title="Final Recipe Ingredients" className="no-print">
-          <div id="printableRecipeArea">
-            {recipeName && recipeName.trim() && recipeName.trim().toLowerCase() !== 'new recipe' && (
-              <h3 className="text-xl font-semibold mb-3 text-center">{recipeName}</h3>
-            )}
-            {finalIngredientsList.length > 0 ? (
-              <ul className="space-y-1.5 text-sm pl-1">
-                {finalIngredientsList.map((item, index) => (
-                  <li key={index} className="flex justify-between items-center py-0.5">
-                    <span className="text-muted-foreground">{item.name}:</span>
-                    <span className="font-medium text-foreground bg-background/50 px-2 py-0.5 rounded-sm">{item.quantity}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-2">No ingredients specified yet.</p>
-            )}
-          </div>
-        </CardSection>
+        
 
         <CardSection title="Other Solid Ingredients" description="Add any other solid ingredients not listed above." className="no-print">
           <div className="space-y-3">

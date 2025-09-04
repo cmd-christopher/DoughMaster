@@ -26,8 +26,7 @@ export default function RecipeDetailPage() {
 
   return (
     <main className="min-h-screen bg-background text-foreground p-4 md:p-8 flex flex-col items-center selection:bg-primary/30">
-      <DoughMasterApp initialRecipeName={initialName} hideLoadControls />
+      <DoughMasterApp initialRecipeName={initialName} hideLoadControls hideHeroHeader />
     </main>
   );
 }
-

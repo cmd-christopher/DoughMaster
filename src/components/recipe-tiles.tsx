@@ -39,8 +39,8 @@ export default function RecipeTiles() {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Your Recipes</h1>
-        <p className="text-sm text-muted-foreground mt-1">Click a tile to open and edit.</p>
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight">DoughMaster</h1>
+        <p className="text-base text-muted-foreground mt-1">Craft your perfect recipe.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -71,4 +71,3 @@ export default function RecipeTiles() {
     </div>
   );
 }
-
