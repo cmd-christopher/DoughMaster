@@ -403,15 +403,14 @@ export default function DoughMasterApp({ initialRecipeName, hideLoadControls = f
 
   // Load by initialRecipeName (from route) on mount/update
   useEffect(() => {
-    if (initialRecipeName) {
-      const recipe = savedRecipes.find(r => r.name === initialRecipeName);
-      if (recipe) {
-        applyRecipeToState(recipe);
-        setSelectedRecipeToLoad(recipe.name);
-      }
+    if (!initialRecipeName) return;
+    if (!savedRecipes || savedRecipes.length === 0) return;
+    const recipe = savedRecipes.find(r => r.name === initialRecipeName);
+    if (recipe) {
+      applyRecipeToState(recipe);
+      setSelectedRecipeToLoad(recipe.name);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialRecipeName]);
+  }, [initialRecipeName, savedRecipes]);
 
   const buildCurrentRecipe = (nameOverride?: string): Recipe => ({
       name: (nameOverride ?? recipeName).trim(),
