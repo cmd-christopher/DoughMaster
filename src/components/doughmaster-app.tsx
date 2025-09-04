@@ -70,7 +70,7 @@ const initialRecipeState: Recipe = {
   oilPercentage: 3,
 };
 
-export default function DoughMasterApp() {
+export default function DoughMasterApp({ initialRecipeName, hideLoadControls = false }: { initialRecipeName?: string; hideLoadControls?: boolean } = {}) {
   const { toast } = useToast();
   const [recipeName, setRecipeName] = useState<string>(initialRecipeState.name);
   const [flourWeight, setFlourWeight] = useState<number>(initialRecipeState.flourWeight);
@@ -205,7 +205,7 @@ export default function DoughMasterApp() {
   };
   const handleAddCustomLiquid = () => setLiquidSpecs([...liquidSpecs, { id: crypto.randomUUID(), name: `Custom Liquid ${liquidSpecs.filter(ls => ls.isCustom).length + 1}`, weight: 0, isCustom: true, isPredefined: false }]);
   const handleUpdateLiquidSpecWeight = (id: string, weight: number) => setLiquidSpecs(prev => prev.map(l => l.id === id ? { ...l, weight: Math.max(0, weight) } : l));
-  const handleUpdateCustomLiquidName = (id: string, newName: string) => setLiquidSpecs(prev => prev.map(l => l.id === id && l.isCustom ? { ...l, name: newName } : s));
+  const handleUpdateCustomLiquidName = (id: string, newName: string) => setLiquidSpecs(prev => prev.map(l => (l.id === id && l.isCustom ? { ...l, name: newName } : l)));
   const handleRemoveCustomLiquid = (idToRemove: string) => setLiquidSpecs(prev => prev.filter(l => l.id !== idToRemove));
 
 
@@ -252,13 +252,7 @@ export default function DoughMasterApp() {
     }
   };
 
-  const handleLoadRecipe = () => {
-    if (!selectedRecipeToLoad) {
-        toast({ title: "Error", description: "Please select a recipe to load.", variant: "destructive" });
-        return;
-    }
-    const recipeToLoad = savedRecipes.find(r => r.name === selectedRecipeToLoad);
-    if (recipeToLoad) {
+  const applyRecipeToState = (recipeToLoad: Recipe) => {
       setRecipeName(recipeToLoad.name);
       setFlourWeight(recipeToLoad.flourWeight);
       setDesiredHydrationPercentage(recipeToLoad.desiredHydrationPercentage);
@@ -280,12 +274,20 @@ export default function DoughMasterApp() {
       setUseEgg(recipeToLoad.useEgg ?? initialRecipeState.useEgg!);
       setEggCountState(recipeToLoad.useEgg ? Math.max(1, eggCountToLoad) : eggCountToLoad);
 
-
       setUseButter(recipeToLoad.useButter ?? initialRecipeState.useButter!);
       setButterPercentageState(recipeToLoad.butterPercentage ?? initialRecipeState.butterPercentage!);
       setUseOil(recipeToLoad.useOil ?? initialRecipeState.useOil!);
       setOilPercentageState(recipeToLoad.oilPercentage!);
-      
+  };
+
+  const handleLoadRecipe = () => {
+    if (!selectedRecipeToLoad) {
+        toast({ title: "Error", description: "Please select a recipe to load.", variant: "destructive" });
+        return;
+    }
+    const recipeToLoad = savedRecipes.find(r => r.name === selectedRecipeToLoad);
+    if (recipeToLoad) {
+      applyRecipeToState(recipeToLoad);
       toast({ title: "Recipe Loaded", description: `"${recipeToLoad.name}" has been loaded.` });
     }
   };
@@ -399,6 +401,50 @@ export default function DoughMasterApp() {
     window.print();
   };
 
+  // Load by initialRecipeName (from route) on mount/update
+  useEffect(() => {
+    if (initialRecipeName) {
+      const recipe = savedRecipes.find(r => r.name === initialRecipeName);
+      if (recipe) {
+        applyRecipeToState(recipe);
+        setSelectedRecipeToLoad(recipe.name);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRecipeName]);
+
+  const buildCurrentRecipe = (nameOverride?: string): Recipe => ({
+      name: (nameOverride ?? recipeName).trim(),
+      flourWeight,
+      desiredHydrationPercentage,
+      saltPercentage,
+      yeastPercentage,
+      useDetailedFlourComposition,
+      flourComposition: useDetailedFlourComposition ? flourSpecs : undefined,
+      useCustomLiquidBlend,
+      liquidComposition: useCustomLiquidBlend ? liquidSpecs : undefined,
+      amendments,
+      useSugar, sugarPercentage: sugarPercentageState,
+      useEgg, eggCount: actualEggCount,
+      useButter, butterPercentage: butterPercentageState,
+      useOil, oilPercentage: oilPercentageState,
+  });
+
+  const handleSaveAsNewRecipe = () => {
+    const base = recipeName.trim() || 'New Recipe';
+    let candidate = base;
+    let i = 1;
+    while (savedRecipes.some(r => r.name === candidate)) {
+      i += 1;
+      candidate = `${base} (${i})`;
+    }
+    const newRecipe = buildCurrentRecipe(candidate);
+    setSavedRecipes([...savedRecipes, newRecipe]);
+    setRecipeName(candidate);
+    setSelectedRecipeToLoad(candidate);
+    toast({ title: "Recipe Saved As New", description: `Saved as "${candidate}".` });
+  };
+
 
   return (
     <TooltipProvider>
@@ -411,6 +457,10 @@ export default function DoughMasterApp() {
         <CardDescription className="text-md text-muted-foreground">Craft your perfect bread recipe.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 p-4 md:p-6">
+        {/* Name input moved up for prominence */}
+        <CardSection title="Recipe Name" className="no-print">
+          <Input id="recipeName" type="text" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder="e.g., Sandwich Rolls" className="mt-1 text-base"/>
+        </CardSection>
         
         <CardSection title="Base Flour" className="no-print">
           <Label htmlFor="flourWeight" className="text-sm font-medium">Total Flour Weight (grams)</Label>
@@ -654,6 +704,27 @@ export default function DoughMasterApp() {
           </div>
         </CardSection>
 
+        {/* Prominent final ingredients at top-ish */}
+        <CardSection title="Final Recipe Ingredients" className="no-print">
+          <div id="printableRecipeArea">
+            {recipeName && recipeName.trim() && recipeName.trim().toLowerCase() !== 'new recipe' && (
+              <h3 className="text-xl font-semibold mb-3 text-center">{recipeName}</h3>
+            )}
+            {finalIngredientsList.length > 0 ? (
+              <ul className="space-y-1.5 text-sm pl-1">
+                {finalIngredientsList.map((item, index) => (
+                  <li key={index} className="flex justify-between items-center py-0.5">
+                    <span className="text-muted-foreground">{item.name}:</span>
+                    <span className="font-medium text-foreground bg-background/50 px-2 py-0.5 rounded-sm">{item.quantity}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-2">No ingredients specified yet.</p>
+            )}
+          </div>
+        </CardSection>
+
         <CardSection title="Other Solid Ingredients" description="Add any other solid ingredients not listed above." className="no-print">
           <div className="space-y-3">
             {amendments.map((am, index) => (
@@ -669,43 +740,19 @@ export default function DoughMasterApp() {
 
         <CardSection title="Recipe Management">
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="recipeName" className="text-sm font-medium no-print">Recipe Name</Label>
-              <Input id="recipeName" type="text" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder="e.g., My Sourdough" className="mt-1 text-base no-print"/>
-            </div>
-            
-            <div id="printableRecipeArea" className="mt-4 pt-4 border-t border-border/30">
-              {recipeName && recipeName.trim() && recipeName.trim().toLowerCase() !== 'new recipe' && (
-                <h3 className="text-xl font-semibold mb-3 text-center">{recipeName}</h3>
-              )}
-              <h4 className="text-md font-semibold mb-3 flex items-center">
-                <ListChecksIcon className="mr-2 h-5 w-5 text-primary no-print-icon" />
-                Final Recipe Ingredients:
-              </h4>
-              {finalIngredientsList.length > 0 ? (
-                <ul className="space-y-1.5 text-sm pl-1">
-                  {finalIngredientsList.map((item, index) => (
-                    <li key={index} className="flex justify-between items-center py-0.5">
-                      <span className="text-muted-foreground">{item.name}:</span>
-                      <span className="font-medium text-foreground bg-background/50 px-2 py-0.5 rounded-sm">{item.quantity}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-2">No ingredients specified yet.</p>
-              )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 no-print">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 no-print">
               <Button onClick={handleSaveRecipe} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                 <SaveIcon className="mr-2 h-4 w-4" /> Save Current Recipe
+              </Button>
+              <Button onClick={handleSaveAsNewRecipe} variant="secondary" className="w-full">
+                <SaveIcon className="mr-2 h-4 w-4" /> Save As New
               </Button>
               <Button onClick={handlePrintRecipe} variant="outline" className="w-full hover:bg-accent/20 transition-colors">
                 <PrinterIcon className="mr-2 h-4 w-4" /> Print Recipe
               </Button>
             </div>
 
-
-            {savedRecipes.length > 0 && (
+            {(!hideLoadControls && savedRecipes.length > 0) && (
               <div className="space-y-2 pt-2 no-print">
                 <Label htmlFor="loadRecipeSelect" className="text-sm font-medium">Load Saved Recipe</Label>
                  <div className="flex space-x-2 items-center">
