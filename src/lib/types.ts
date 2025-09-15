@@ -27,6 +27,9 @@ export interface Recipe {
   desiredHydrationPercentage: number; // User's target total hydration
   saltPercentage: number;
   yeastPercentage: number;
+  // Optional metadata for UI features
+  pinned?: boolean; // Favorite recipe on home
+  updatedAt?: number; // epoch ms for sorting by last edited
   
   useDetailedFlourComposition?: boolean;
   flourComposition?: FlourSpec[]; // Array of different flour types and their shares

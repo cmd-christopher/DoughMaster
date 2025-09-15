@@ -4,7 +4,7 @@ import RecipeTiles from "@/components/recipe-tiles";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background text-foreground p-6 md:p-10 selection:bg-primary/30">
+    <main className="min-h-screen bg-background text-foreground p-6 md:p-10 selection:bg-primary/30 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.06),_transparent_60%)]">
       <div className="mx-auto max-w-5xl">
         <RecipeTiles />
       </div>

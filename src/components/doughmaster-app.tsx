@@ -227,6 +227,8 @@ export default function DoughMasterApp({ initialRecipeName, hideLoadControls = f
       desiredHydrationPercentage, 
       saltPercentage,
       yeastPercentage,
+      pinned: savedRecipes.find(r => r.name === (recipeName.trim()))?.pinned, // preserve if exists
+      updatedAt: Date.now(),
       useDetailedFlourComposition,
       flourComposition: useDetailedFlourComposition ? flourSpecs : undefined,
       useCustomLiquidBlend,
@@ -418,6 +420,8 @@ export default function DoughMasterApp({ initialRecipeName, hideLoadControls = f
       desiredHydrationPercentage,
       saltPercentage,
       yeastPercentage,
+      pinned: savedRecipes.find(r => r.name === (nameOverride ?? recipeName))?.pinned,
+      updatedAt: Date.now(),
       useDetailedFlourComposition,
       flourComposition: useDetailedFlourComposition ? flourSpecs : undefined,
       useCustomLiquidBlend,
