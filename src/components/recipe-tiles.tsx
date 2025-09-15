@@ -26,7 +26,11 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Copy, MoreVertical, Pencil, Trash2, Star, Printer } from "lucide-react";
 
 const DEFAULT_RECIPE: Recipe = {
   name: "Basic Bread",
@@ -53,19 +57,84 @@ export default function RecipeTiles() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameTargetName, setRenameTargetName] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState<string>("");
+  const [query, setQuery] = useState("");
+  const [tab, setTab] = useState("all");
+  const [sortBy, setSortBy] = useState<"edited" | "name" | "hydration" | "flour">("edited");
 
   const isFallback = recipes.length === 0;
   const allRecipes = isFallback ? [DEFAULT_RECIPE] : recipes;
 
+  const filtered = allRecipes
+    .filter(r => r.name.toLowerCase().includes(query.toLowerCase()))
+    .filter(r => {
+      if (tab === "favorites") return !!r.pinned;
+      if (tab === "enriched") return !!(r.useEgg || r.useButter || r.useOil || r.useSugar);
+      if (tab === "highHydration") return (r.desiredHydrationPercentage ?? 0) >= 70;
+      return true;
+    })
+    .slice();
+
+  filtered.sort((a, b) => {
+    switch (sortBy) {
+      case "name":
+        return a.name.localeCompare(b.name);
+      case "hydration":
+        return (b.desiredHydrationPercentage ?? 0) - (a.desiredHydrationPercentage ?? 0);
+      case "flour":
+        return (b.flourWeight ?? 0) - (a.flourWeight ?? 0);
+      case "edited":
+      default:
+        return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
+    }
+  });
+
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h1 className="text-4xl md:text-5xl font-bold tracking-tight">DoughMaster</h1>
-        <p className="text-base text-muted-foreground mt-1">Craft your perfect recipe.</p>
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight pb-0.5 bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/60">Dough Recipes</h1>
+        <div className="mt-4">
+          <Button asChild>
+            <Link href="/recipes/new">+ New Recipe</Link>
+          </Button>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-5xl w-full space-y-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <Input
+            placeholder="Search recipes..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="sm:flex-1"
+          />
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+            <SelectTrigger className="w-full sm:w-56">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="edited">Last edited</SelectItem>
+              <SelectItem value="name">Name A–Z</SelectItem>
+              <SelectItem value="hydration">Hydration</SelectItem>
+              <SelectItem value="flour">Flour weight</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="grid grid-cols-4 w-full sm:w-auto">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="favorites">Favorites</TabsTrigger>
+            <TabsTrigger value="enriched">Enriched</TabsTrigger>
+            <TabsTrigger value="highHydration">High Hydration</TabsTrigger>
+          </TabsList>
+          <TabsContent value="all" />
+          <TabsContent value="favorites" />
+          <TabsContent value="enriched" />
+          <TabsContent value="highHydration" />
+        </Tabs>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {allRecipes.map((r) => {
+        {filtered.map((r) => {
           const href = `/recipes/${encodeURIComponent(r.name)}`;
           if (isFallback) {
             // Simple, clickable fallback tile without actions
@@ -86,16 +155,50 @@ export default function RecipeTiles() {
           // Tile with actions: wrap the card link and overlay a menu button
           return (
             <div key={r.name} className="relative group">
-              <Link href={href} className="block">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xl truncate">{r.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    <div>{r.flourWeight}g flour • {r.desiredHydrationPercentage}% hydration</div>
-                  </CardContent>
-                </Card>
-              </Link>
+              <TooltipProvider>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <Link href={href} className="block">
+                      <Card className="hover:shadow-lg transition-all cursor-pointer hover:-translate-y-0.5">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <CardTitle className="text-xl truncate">{r.name}</CardTitle>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="opacity-70 hover:opacity-100"
+                              aria-label={r.pinned ? "Unpin" : "Pin"}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setRecipes(recipes.map(x => x.name === r.name ? { ...x, pinned: !x.pinned, updatedAt: x.updatedAt ?? Date.now() } : x));
+                              }}
+                            >
+                              <Star className="h-4 w-4" fill={r.pinned ? "currentColor" : "none"} />
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="text-sm text-muted-foreground">
+                          <div>{r.flourWeight}g flour • {r.desiredHydrationPercentage}% hydration</div>
+                          <div className="mt-2 flex gap-1 flex-wrap">
+                            {!!r.useEgg && <Badge variant="secondary">Egg</Badge>}
+                            {!!r.useSugar && <Badge variant="secondary">Sweet</Badge>}
+                            {!!r.useButter && <Badge variant="secondary">Butter</Badge>}
+                            {!!r.useOil && <Badge variant="secondary">Oil</Badge>}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs space-y-0.5">
+                      <div><span className="font-medium">Hydration:</span> {r.desiredHydrationPercentage}%</div>
+                      <div><span className="font-medium">Flour:</span> {r.flourWeight}g</div>
+                      <div className="text-muted-foreground">Salt {r.saltPercentage}% • Yeast {r.yeastPercentage}%</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <div className="absolute top-2 right-2 opacity-90 group-hover:opacity-100">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -112,6 +215,15 @@ export default function RecipeTiles() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" onClick={(e) => { e.stopPropagation(); }}>
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        // Navigate to detail and auto-print
+                        window.location.href = `${href}?print=1`;
+                      }}
+                    >
+                      <Printer className="mr-2 h-4 w-4" /> Print
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={(e) => {
                         e.preventDefault();
@@ -133,6 +245,7 @@ export default function RecipeTiles() {
                           candidate = `${base} (${i})`;
                         }
                         const copy: Recipe = { ...r, name: candidate };
+                        copy.updatedAt = Date.now();
                         setRecipes([...recipes, copy]);
                       }}
                     >
@@ -213,7 +326,7 @@ export default function RecipeTiles() {
                   if (!trimmed || !renameTargetName) return;
                   const exists = recipes.some((x) => x.name === trimmed && x.name !== renameTargetName);
                   if (exists) return;
-                  setRecipes(recipes.map((x) => (x.name === renameTargetName ? { ...x, name: trimmed } : x)));
+                  setRecipes(recipes.map((x) => (x.name === renameTargetName ? { ...x, name: trimmed, updatedAt: Date.now() } : x)));
                   setRenameOpen(false);
                 }
               }}
@@ -234,7 +347,7 @@ export default function RecipeTiles() {
                 if (!trimmed || !renameTargetName) return;
                 const exists = recipes.some((x) => x.name === trimmed && x.name !== renameTargetName);
                 if (exists) return;
-                setRecipes(recipes.map((x) => (x.name === renameTargetName ? { ...x, name: trimmed } : x)));
+                setRecipes(recipes.map((x) => (x.name === renameTargetName ? { ...x, name: trimmed, updatedAt: Date.now() } : x)));
                 setRenameOpen(false);
               }}
               disabled={!renameValue.trim() || (renameTargetName ? recipes.some((x) => x.name === renameValue.trim() && x.name !== renameTargetName) : true)}
